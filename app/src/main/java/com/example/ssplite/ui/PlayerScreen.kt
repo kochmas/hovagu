@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
+import com.example.ssplite.audio.AudioEngine
 import com.example.ssplite.audio.FfpAudioProcessor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -96,10 +97,15 @@ fun PlayerScreen(navController: NavController, testPlayer: ExoPlayer? = null) {
     var targetStopIndex by remember { mutableStateOf<Int?>(null) }
     var countdownJob by remember { mutableStateOf<Job?>(null) }
 
+    val processor = remember {
+        AudioEngine.processor ?: FfpAudioProcessor().also { AudioEngine.processor = it }
+    }
+
     val player = testPlayer ?: remember {
-        ExoPlayer.Builder(context)
-            .setAudioProcessors(listOf(FfpAudioProcessor()))
+        AudioEngine.player ?: ExoPlayer.Builder(context)
+            .setAudioProcessors(listOf(processor))
             .build()
+            .also { AudioEngine.player = it }
     }
 
     val openTree = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
