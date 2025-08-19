@@ -20,6 +20,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.navigation.NavController
 
+private val SUPPORTED_AUDIO_EXTENSIONS = setOf(
+    "mp3", "wav", "flac", "ogg", "m4a", "aac"
+)
+
+private fun isSupportedAudio(file: DocumentFile): Boolean {
+    val name = file.name?.lowercase() ?: return false
+    return SUPPORTED_AUDIO_EXTENSIONS.any { ext -> name.endsWith(".$ext") }
+}
+
 private fun DocumentFile.findFileByRelativePath(path: String): DocumentFile? {
     val parts = path.split("/").filter { it.isNotEmpty() }
     var current: DocumentFile? = this
@@ -32,17 +41,32 @@ private fun DocumentFile.findFileByRelativePath(path: String): DocumentFile? {
 
 private fun buildPlaylist(root: DocumentFile?, context: Context): List<Uri> {
     if (root == null) return emptyList()
-    val playlistFile = root.listFiles().firstOrNull { file ->
-        val name = file.name?.lowercase()
-        file.isFile && (name?.endsWith(".m3u") == true || name?.endsWith(".m3u8") == true)
+
+    fun findPlaylistFile(dir: DocumentFile): DocumentFile? {
+        dir.listFiles().forEach { file ->
+            if (file.isFile) {
+                val name = file.name?.lowercase()
+                if (name != null && (name.endsWith(".m3u") || name.endsWith(".m3u8"))) {
+                    return file
+                }
+            } else if (file.isDirectory) {
+                findPlaylistFile(file)?.let { return it }
+            }
+        }
+        return null
     }
+
+    val playlistFile = findPlaylistFile(root)
     return if (playlistFile != null) {
         val items = mutableListOf<Uri>()
         context.contentResolver.openInputStream(playlistFile.uri)?.bufferedReader()?.useLines { lines ->
             lines.forEach { line ->
                 val trimmed = line.trim()
                 if (trimmed.isNotEmpty() && !trimmed.startsWith("#")) {
-                    root.findFileByRelativePath(trimmed)?.takeIf { it.isFile }?.let { items.add(it.uri) }
+                    val track = root.findFileByRelativePath(trimmed)
+                    if (track != null && track.isFile && isSupportedAudio(track)) {
+                        items.add(track.uri)
+                    }
                 }
             }
         }
@@ -52,7 +76,7 @@ private fun buildPlaylist(root: DocumentFile?, context: Context): List<Uri> {
         fun traverse(dir: DocumentFile) {
             dir.listFiles().forEach { file ->
                 if (file.isDirectory) traverse(file)
-                else if (file.isFile) uris.add(file.uri)
+                else if (file.isFile && isSupportedAudio(file)) uris.add(file.uri)
             }
         }
         traverse(root)
