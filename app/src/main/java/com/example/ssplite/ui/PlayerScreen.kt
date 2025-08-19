@@ -109,6 +109,15 @@ fun PlayerScreen(navController: NavController, testPlayer: ExoPlayer? = null) {
             .also { AudioEngine.player = it }
     }
 
+    DisposableEffect(player) {
+        onDispose {
+            player.release()
+            if (AudioEngine.player == player) {
+                AudioEngine.player = null
+            }
+        }
+    }
+
     val openTree = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         treeUri = uri
         if (uri != null) {
