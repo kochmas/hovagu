@@ -197,6 +197,23 @@ fun FilterScreen(navController: NavController) {
                 Spacer(Modifier.height(8.dp))
             }
 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Modulation")
+                Spacer(Modifier.width(8.dp))
+                Switch(
+                    checked = preset.modulation.enabled,
+                    onCheckedChange = { enabled ->
+                        val updated = preset.copy(
+                            modulation = preset.modulation.copy(enabled = enabled)
+                        )
+                        currentPreset = updated
+                        processor?.setLfoEnabled(enabled)
+                    }
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
             Text("Modulation Rate: ${String.format("%.1f", preset.modulation.rate_hz)} Hz")
             Slider(
                 value = preset.modulation.rate_hz,
@@ -205,7 +222,7 @@ fun FilterScreen(navController: NavController) {
                         modulation = preset.modulation.copy(rate_hz = rate)
                     )
                     currentPreset = updated
-                    processor?.setPreset(updated)
+                    processor?.setLfoRateHz(rate)
                 },
                 valueRange = 0f..10f
             )
@@ -220,7 +237,7 @@ fun FilterScreen(navController: NavController) {
                         modulation = preset.modulation.copy(depth_db = depth)
                     )
                     currentPreset = updated
-                    processor?.setPreset(updated)
+                    processor?.setLfoDepthDb(depth)
                 },
                 valueRange = 0f..6f
             )
