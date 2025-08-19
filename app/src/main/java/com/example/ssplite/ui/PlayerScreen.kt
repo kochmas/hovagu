@@ -13,6 +13,7 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import com.example.ssplite.audio.FfpAudioProcessor
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.navigation.NavController
@@ -25,6 +26,9 @@ fun PlayerScreen(navController: NavController) {
     var playlist by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var sessionMinutes by remember { mutableStateOf(0) }
     var elapsedMs by remember { mutableStateOf(0L) }
+    var countdownMs by remember { mutableStateOf(0L) }
+    var targetStopIndex by remember { mutableStateOf<Int?>(null) }
+    var countdownJob by remember { mutableStateOf<Job?>(null) }
 
     val player = remember {
         ExoPlayer.Builder(context)
@@ -62,11 +66,41 @@ fun PlayerScreen(navController: NavController) {
         )
         Spacer(Modifier.height(8.dp))
         Row {
-            Button(onClick = { player.play() }) { Text("Play") }
+            Button(onClick = {
+                player.play()
+                countdownJob?.cancel()
+                if (sessionMinutes > 0) {
+                    countdownMs = sessionMinutes * 60_000L
+                    targetStopIndex = null
+                    countdownJob = scope.launch {
+                        var remaining = countdownMs
+                        while (remaining > 0) {
+                            if (player.isPlaying) {
+                                delay(1000)
+                                remaining -= 1000
+                                countdownMs = remaining
+                            } else {
+                                delay(200)
+                            }
+                        }
+                        targetStopIndex = player.currentMediaItemIndex
+                        val stopIdx = targetStopIndex!!
+                        if (player.mediaItemCount > stopIdx + 1) {
+                            player.removeMediaItems(stopIdx + 1, player.mediaItemCount)
+                        }
+                    }
+                }
+            }) { Text("Play") }
             Spacer(Modifier.width(8.dp))
             Button(onClick = { player.pause() }) { Text("Pause") }
         }
         Spacer(Modifier.height(8.dp))
+        if (sessionMinutes > 0) {
+            val minutes = countdownMs / 60_000
+            val seconds = (countdownMs / 1000) % 60
+            Text(String.format("Restzeit: %02d:%02d", minutes, seconds))
+            Spacer(Modifier.height(8.dp))
+        }
         Text("Track: ${'$'}{player.currentMediaItemIndex + 1}/${'$'}{playlist.size}")
         LinearProgressIndicator(
             progress = if (player.duration > 0) elapsedMs / player.duration.toFloat() else 0f,
