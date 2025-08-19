@@ -1,5 +1,7 @@
 package com.example.ssplite.ui
 
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +19,46 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.navigation.NavController
+
+private fun DocumentFile.findFileByRelativePath(path: String): DocumentFile? {
+    val parts = path.split("/").filter { it.isNotEmpty() }
+    var current: DocumentFile? = this
+    for (part in parts) {
+        current = current?.listFiles()?.firstOrNull { it.name == part }
+        if (current == null) return null
+    }
+    return current
+}
+
+private fun buildPlaylist(root: DocumentFile?, context: Context): List<Uri> {
+    if (root == null) return emptyList()
+    val playlistFile = root.listFiles().firstOrNull { file ->
+        val name = file.name?.lowercase()
+        file.isFile && (name?.endsWith(".m3u") == true || name?.endsWith(".m3u8") == true)
+    }
+    return if (playlistFile != null) {
+        val items = mutableListOf<Uri>()
+        context.contentResolver.openInputStream(playlistFile.uri)?.bufferedReader()?.useLines { lines ->
+            lines.forEach { line ->
+                val trimmed = line.trim()
+                if (trimmed.isNotEmpty() && !trimmed.startsWith("#")) {
+                    root.findFileByRelativePath(trimmed)?.takeIf { it.isFile }?.let { items.add(it.uri) }
+                }
+            }
+        }
+        items
+    } else {
+        val uris = mutableListOf<Uri>()
+        fun traverse(dir: DocumentFile) {
+            dir.listFiles().forEach { file ->
+                if (file.isDirectory) traverse(file)
+                else if (file.isFile) uris.add(file.uri)
+            }
+        }
+        traverse(root)
+        uris
+    }
+}
 
 @Composable
 fun PlayerScreen(navController: NavController) {
@@ -39,8 +81,12 @@ fun PlayerScreen(navController: NavController) {
     val openTree = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         treeUri = uri
         if (uri != null) {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
             val docs = DocumentFile.fromTreeUri(context, uri)
-            playlist = docs?.listFiles()?.filter { it.isFile }?.map { it.uri } ?: emptyList()
+            playlist = buildPlaylist(docs, context)
             player.setMediaItems(playlist.map { MediaItem.fromUri(it) })
             player.prepare()
         }
