@@ -11,6 +11,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.media3.test.utils.FakeExoPlayer
 import androidx.media3.test.utils.FakeMediaSource
 import androidx.media3.test.utils.FakeTimeline
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -37,5 +38,27 @@ class SessionStopTest {
         composeTestRule.onNodeWithText("Play").performClick()
         composeTestRule.mainClock.advanceTimeBy(61_000)
         composeTestRule.onNodeWithText("Restzeit: 00:00").assertIsDisplayed()
+    }
+
+    @Test
+    fun plannedStopDisplayedAndQueueTrimmed() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val player = FakeExoPlayer.Builder(context).build()
+        composeTestRule.mainClock.autoAdvance = false
+        composeTestRule.setContent {
+            val nav = rememberNavController()
+            PlayerScreen(navController = nav, testPlayer = player)
+        }
+        composeTestRule.onNodeWithText("Session (Minuten)").performTextInput("1")
+        composeTestRule.runOnUiThread {
+            player.setMediaSource(FakeMediaSource(FakeTimeline(2)))
+            player.prepare()
+        }
+        composeTestRule.onNodeWithText("Play").performClick()
+        composeTestRule.mainClock.advanceTimeBy(61_000)
+        composeTestRule.onNodeWithText("Geplantes Ende nach Track 1").assertIsDisplayed()
+        composeTestRule.runOnUiThread {
+            assertEquals(1, player.mediaItemCount)
+        }
     }
 }

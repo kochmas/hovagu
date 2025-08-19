@@ -91,7 +91,8 @@ fun PlayerScreen(navController: NavController, testPlayer: ExoPlayer? = null) {
     var treeUri by remember { mutableStateOf<Uri?>(null) }
     var playlist by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var sessionMinutes by remember { mutableStateOf(0) }
-    var elapsedMs by remember { mutableStateOf(0L) }
+    var trackPositionMs by remember { mutableStateOf(0L) }
+    var sessionElapsedMs by remember { mutableStateOf(0L) }
     var countdownMs by remember { mutableStateOf(0L) }
     var targetStopIndex by remember { mutableStateOf<Int?>(null) }
     var countdownJob by remember { mutableStateOf<Job?>(null) }
@@ -118,7 +119,7 @@ fun PlayerScreen(navController: NavController, testPlayer: ExoPlayer? = null) {
 
     LaunchedEffect(player) {
         while (true) {
-            elapsedMs = player.currentPosition
+            trackPositionMs = player.currentPosition
             delay(1000)
         }
     }
@@ -141,6 +142,7 @@ fun PlayerScreen(navController: NavController, testPlayer: ExoPlayer? = null) {
                 countdownJob?.cancel()
                 if (sessionMinutes > 0) {
                     countdownMs = sessionMinutes * 60_000L
+                    sessionElapsedMs = 0L
                     targetStopIndex = null
                     countdownJob = scope.launch {
                         var remaining = countdownMs
@@ -148,15 +150,28 @@ fun PlayerScreen(navController: NavController, testPlayer: ExoPlayer? = null) {
                             if (player.isPlaying) {
                                 delay(1000)
                                 remaining -= 1000
+                                sessionElapsedMs += 1000
                                 countdownMs = remaining
+                                if (targetStopIndex == null) {
+                                    val remainingTrack = player.duration - player.currentPosition
+                                    if (remaining <= remainingTrack) {
+                                        targetStopIndex = player.currentMediaItemIndex
+                                        val stopIdx = targetStopIndex!!
+                                        if (player.mediaItemCount > stopIdx + 1) {
+                                            player.removeMediaItems(stopIdx + 1, player.mediaItemCount)
+                                        }
+                                    }
+                                }
                             } else {
                                 delay(200)
                             }
                         }
-                        targetStopIndex = player.currentMediaItemIndex
-                        val stopIdx = targetStopIndex!!
-                        if (player.mediaItemCount > stopIdx + 1) {
-                            player.removeMediaItems(stopIdx + 1, player.mediaItemCount)
+                        if (targetStopIndex == null) {
+                            targetStopIndex = player.currentMediaItemIndex
+                            val stopIdx = targetStopIndex!!
+                            if (player.mediaItemCount > stopIdx + 1) {
+                                player.removeMediaItems(stopIdx + 1, player.mediaItemCount)
+                            }
                         }
                     }
                 }
@@ -171,9 +186,13 @@ fun PlayerScreen(navController: NavController, testPlayer: ExoPlayer? = null) {
             Text(String.format("Restzeit: %02d:%02d", minutes, seconds))
             Spacer(Modifier.height(8.dp))
         }
+        if (targetStopIndex != null) {
+            Text("Geplantes Ende nach Track ${'$'}{targetStopIndex!! + 1}")
+            Spacer(Modifier.height(8.dp))
+        }
         Text("Track: ${'$'}{player.currentMediaItemIndex + 1}/${'$'}{playlist.size}")
         LinearProgressIndicator(
-            progress = if (player.duration > 0) elapsedMs / player.duration.toFloat() else 0f,
+            progress = if (player.duration > 0) trackPositionMs / player.duration.toFloat() else 0f,
             modifier = Modifier.fillMaxWidth()
         )
     }
