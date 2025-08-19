@@ -38,6 +38,7 @@ class FfpAudioProcessor : BaseAudioProcessor() {
     override fun onConfigure(inputAudioFormat: AudioFormat): AudioFormat {
         sampleRate = inputAudioFormat.sampleRate
         lfo.setSampleRate(sampleRate)
+        dynamics.setSampleRate(sampleRate)
         preset?.let { applyPreset(it) }
         return inputAudioFormat
     }
@@ -54,6 +55,11 @@ class FfpAudioProcessor : BaseAudioProcessor() {
         }
         dynamics.preGainDb = p.dynamics.pregain_db
         dynamics.ceilingDbfs = p.dynamics.limiter.ceiling_dbfs
+        dynamics.setLookaheadMs(p.dynamics.limiter.lookahead_ms)
+        dynamics.setReleaseMs(p.dynamics.limiter.release_ms)
+        p.dynamics.compressor?.let { c ->
+            dynamics.setCompressor(c.enabled, c.ratio, c.threshold_dbfs, c.attack_ms, c.release_ms)
+        } ?: dynamics.setCompressor(false, 1f, 0f, 1f, 1f)
         lfo.enabled = p.modulation.enabled
         lfo.rateHz = p.modulation.rate_hz
         lfo.depthDb = p.modulation.depth_db
