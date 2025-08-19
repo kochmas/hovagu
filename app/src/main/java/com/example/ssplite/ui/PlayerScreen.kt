@@ -61,7 +61,7 @@ private fun buildPlaylist(root: DocumentFile?, context: Context): List<Uri> {
 }
 
 @Composable
-fun PlayerScreen(navController: NavController) {
+fun PlayerScreen(navController: NavController, testPlayer: ExoPlayer? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var treeUri by remember { mutableStateOf<Uri?>(null) }
@@ -72,7 +72,7 @@ fun PlayerScreen(navController: NavController) {
     var targetStopIndex by remember { mutableStateOf<Int?>(null) }
     var countdownJob by remember { mutableStateOf<Job?>(null) }
 
-    val player = remember {
+    val player = testPlayer ?: remember {
         ExoPlayer.Builder(context)
             .setAudioProcessors(listOf(FfpAudioProcessor()))
             .build()
