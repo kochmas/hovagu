@@ -13,7 +13,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
 import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import com.example.ssplite.audio.AudioEngine
 import com.example.ssplite.audio.FfpAudioProcessor
 import kotlinx.coroutines.Job
@@ -102,11 +104,17 @@ fun PlayerScreen(navController: NavController, testPlayer: ExoPlayer? = null) {
         AudioEngine.processor ?: FfpAudioProcessor().also { AudioEngine.processor = it }
     }
 
+    @OptIn(UnstableApi::class)
     val player = testPlayer ?: remember {
-        AudioEngine.player ?: ExoPlayer.Builder(context)
-            .setAudioProcessors(listOf(processor))
-            .build()
-            .also { AudioEngine.player = it }
+        AudioEngine.player ?: run {
+            val audioSink = DefaultAudioSink.Builder()
+                .setAudioProcessors(processor)
+                .build()
+            ExoPlayer.Builder(context)
+                .setAudioSink(audioSink)
+                .build()
+                .also { AudioEngine.player = it }
+        }
     }
 
     DisposableEffect(player) {
