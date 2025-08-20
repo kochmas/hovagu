@@ -14,6 +14,8 @@ Minimalistische Android-App (Kotlin/Compose + ExoPlayer) für SSP-inspirierte Em
 - Jetpack Compose UI, Kotlin.
 - GitHub Actions Workflow (`.github/workflows/android-release.yml`) baut signierte Release-APK.
 
+## Web-Demo
+Eine einfache Web-Version zum Testen steht im Ordner `web/`. Öffne `web/index.html` in einem aktuellen Browser, um Audio abzuspielen und Filtereinstellungen auszuprobieren.
 ## Keystore
 Siehe [KEYS.md](KEYS.md) für Erstellung des Keystores und GitHub-Secrets.
 
