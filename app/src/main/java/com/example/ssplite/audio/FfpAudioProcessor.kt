@@ -1,7 +1,7 @@
 package com.example.ssplite.audio
 
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.audio.AudioProcessor.AudioFormat
+import androidx.media3.common.audio.AudioProcessor.AudioFormat
 import androidx.media3.exoplayer.audio.BaseAudioProcessor
 import com.example.ssplite.model.Preset
 import java.nio.ByteBuffer
