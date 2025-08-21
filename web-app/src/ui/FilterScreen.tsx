@@ -84,6 +84,14 @@ const defaultPreset: Preset = {
 };
 
 const LOCAL_KEY = 'user-presets';
+const PRESET_FILES = [
+  '01_social_voice.json',
+  '02_weiche_prosodie.json',
+  '03_kinderstimme.json',
+  '04_maennerstimme.json',
+  '05_konservativ.json',
+  '06_komfort_plus.json',
+];
 
 function loadUserPresets(): Record<string, Preset> {
   try {
@@ -102,11 +110,26 @@ const FilterScreen: React.FC = () => {
   const [preset, setPreset] = useState<Preset>(defaultPreset);
   const [bypass, setBypass] = useState(false);
   const [userPresets, setUserPresets] = useState<Record<string, Preset>>({});
+  const [builtinPresets, setBuiltinPresets] = useState<Record<string, Preset>>({});
   const [selectedName, setSelectedName] = useState('Default');
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setUserPresets(loadUserPresets());
+    async function loadBuiltin() {
+      const builtins: Record<string, Preset> = {};
+      for (const file of PRESET_FILES) {
+        try {
+          const resp = await fetch(`/presets/${file}`);
+          const p: Preset = await resp.json();
+          builtins[p.name] = p;
+        } catch (e) {
+          console.error('Failed to load preset', file, e);
+        }
+      }
+      setBuiltinPresets(builtins);
+    }
+    loadBuiltin();
   }, []);
 
   const handleSave = () => {
@@ -119,6 +142,9 @@ const FilterScreen: React.FC = () => {
     if (name === 'Default') {
       setPreset(defaultPreset);
       setSelectedName('Default');
+    } else if (builtinPresets[name]) {
+      setPreset(builtinPresets[name]);
+      setSelectedName(name);
     } else {
       const p = userPresets[name];
       if (p) {
@@ -161,7 +187,7 @@ const FilterScreen: React.FC = () => {
 
   const updatePreset = (updated: Preset) => {
     setPreset(updated);
-    if (selectedName !== 'Default') {
+    if (selectedName !== 'Default' && !builtinPresets[selectedName]) {
       const up = { ...userPresets, [updated.name]: updated };
       setUserPresets(up);
       saveUserPresets(up);
@@ -174,6 +200,9 @@ const FilterScreen: React.FC = () => {
       <div>
         <select value={selectedName} onChange={(e) => handleSelectPreset(e.target.value)}>
           <option value="Default">Default</option>
+          {Object.keys(builtinPresets).map((name) => (
+            <option key={name} value={name}>{name}</option>
+          ))}
           {Object.keys(userPresets).map((name) => (
             <option key={name} value={name}>{name}</option>
           ))}

@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "Männerstimme-Fokus",
+  "eq": {
+    "low_shelf": { "fc_hz": 140, "gain_db": -8 },
+    "peaks": [
+      { "fc_hz": 800, "gain_db": 4, "q": 1.0 },
+      { "fc_hz": 1600, "gain_db": 3, "q": 1.0 }
+    ],
+    "high_shelf": { "fc_hz": 4500, "gain_db": -6 },
+    "tilt_db": 0
+  },
+  "modulation": {
+    "enabled": true,
+    "rate_hz": 0.04,
+    "depth_db": 0.0,
+    "mode": "fc",
+    "fc_drift_oct": 0.25,
+    "jitter": 0.1
+  },
+  "dynamics": {
+    "pregain_db": -3,
+    "limiter": { "ceiling_dbfs": -1.0, "lookahead_ms": 5, "release_ms": 100 },
+    "compressor": { "enabled": false, "ratio": 1.3, "threshold_dbfs": -24, "attack_ms": 15, "release_ms": 120 }
+  }
+}
