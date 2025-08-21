@@ -1,15 +1,19 @@
 const fileInput = document.getElementById('file');
+const dirInput = document.getElementById('dir');
 const playBtn = document.getElementById('play');
 const pauseBtn = document.getElementById('pause');
+const playlistEl = document.getElementById('playlist');
 
 let audioContext;
 let source;
 let lowShelf, peak1, peak2, highShelf;
 let audioElement;
 
-fileInput.onchange = async () => {
-  const file = fileInput.files[0];
-  if (!file) return;
+let playlist = [];
+let currentIndex = 0;
+
+async function loadTrack(item) {
+  if (!item) return;
 
   if (!audioContext) {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -20,9 +24,9 @@ fileInput.onchange = async () => {
     audioElement.remove();
   }
 
-  const url = URL.createObjectURL(file);
+  const url = item instanceof File ? URL.createObjectURL(item) : item.toString();
   audioElement = new Audio(url);
-  audioElement.crossOrigin = "anonymous";
+  audioElement.crossOrigin = 'anonymous';
 
   source = audioContext.createMediaElementSource(audioElement);
 
@@ -69,4 +73,61 @@ fileInput.onchange = async () => {
 
   playBtn.onclick = () => audioElement.play();
   pauseBtn.onclick = () => audioElement.pause();
+}
+
+function renderPlaylist() {
+  playlistEl.innerHTML = '';
+  playlist.forEach((item, idx) => {
+    const li = document.createElement('li');
+    li.textContent = item instanceof File ? item.name : item.toString();
+    if (idx === currentIndex) li.style.fontWeight = 'bold';
+    li.onclick = async () => {
+      currentIndex = idx;
+      await loadTrack(playlist[currentIndex]);
+      renderPlaylist();
+    };
+    playlistEl.appendChild(li);
+  });
+}
+
+fileInput.onchange = async () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  playlist = [file];
+  currentIndex = 0;
+  await loadTrack(file);
+  renderPlaylist();
+};
+
+dirInput.onchange = async () => {
+  playlist = [];
+  currentIndex = 0;
+  const files = Array.from(dirInput.files);
+
+  const fileMap = new Map();
+  files.forEach(f => fileMap.set(f.webkitRelativePath, f));
+
+  for (const f of files) {
+    if (/\.m3u8?$/i.test(f.name)) {
+      const text = await f.text();
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+      const baseDir = f.webkitRelativePath.substring(0, f.webkitRelativePath.lastIndexOf('/') + 1);
+      for (const line of lines) {
+        if (/^https?:\/\//i.test(line)) {
+          try {
+            playlist.push(new URL(line));
+          } catch (_) {}
+        } else {
+          const relPath = (baseDir + line).replace(/\/g, '/');
+          const found = fileMap.get(relPath) || fileMap.get(line);
+          if (found) playlist.push(found);
+        }
+      }
+    } else if (f.type.startsWith('audio/')) {
+      playlist.push(f);
+    }
+  }
+
+  await loadTrack(playlist[currentIndex]);
+  renderPlaylist();
 };
