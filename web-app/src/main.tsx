@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import PlayerScreen, { Track } from './ui/PlayerScreen';
+import FilterScreen from './ui/FilterScreen';
 
 const tracks: Track[] = [
   { id: 1, title: 'Track A', url: '/audio/track-a.mp3', duration: 30 },
@@ -10,5 +11,6 @@ const tracks: Track[] = [
 ReactDOM.createRoot(document.getElementById('app') as HTMLElement).render(
   <React.StrictMode>
     <PlayerScreen tracks={tracks} />
+    <FilterScreen />
   </React.StrictMode>
 );
